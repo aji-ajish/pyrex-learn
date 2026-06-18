@@ -12,6 +12,7 @@ router.get("/about",[auth], PageController.about);
 router.get("/contact", PageController.contact);
 router.get("/user/:id", PageController.user);
 router.get("/user/profile/:id", PageController.userProfile);
+router.post("/user",PageController.createUser);
 
 router.notFound(PageController.notFound);
 

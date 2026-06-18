@@ -11,14 +11,38 @@ const server = Bun.serve({
     }
     const match = router.match(request.method, path);
     if (match) {
-      return router.runMiddlewares(
-        request,
-        match.middlewares, // ← route-level middlewares
-        () => match.handler(match.params),
+      const res = {
+        status: (code) => {
+          return {
+            json: (data) =>
+              new Response(JSON.stringify(data), {
+                status: code, 
+                headers: { "Content-Type": "application/json" },
+              }),
+            send: (text) => new Response(text, { status: code }),
+            redirect: (url) =>
+              new Response(null, {
+                status: code,
+                headers: { Location: url },
+              }),
+          };
+        },
+        json: (data) =>
+          new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        send: (text) => new Response(text, { status: 200 }),
+        redirect: (url) =>
+          new Response(null, {
+            status: 302,
+            headers: { Location: url },
+          }),
+      };
+      return router.runMiddlewares(request, match.middlewares, () =>
+        match.handler(match.params, request, res),res
       );
     }
-
-    // return new Response("404 - Page Not Found", { status: 404 });
   },
 });
 

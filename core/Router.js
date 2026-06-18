@@ -28,7 +28,7 @@ class Router {
     this.notFoundHandler = handler;
   }
 
-  async runMiddlewares(request, routeMiddlewares, finalHandler) {
+  async runMiddlewares(request, routeMiddlewares, finalHandler,res) {
     const allMiddlewares = [...this.middlewares, ...(routeMiddlewares || [])];
     let index = 0;
 
@@ -36,7 +36,7 @@ class Router {
       if (index < allMiddlewares.length) {
         const middleware = allMiddlewares[index];
         index++;
-        return await middleware(request, next);
+        return await middleware(request, next,res);
       }
       return await finalHandler();
     };
