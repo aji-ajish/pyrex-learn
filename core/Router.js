@@ -28,7 +28,24 @@ class Router {
     this.notFoundHandler = handler;
   }
 
-  async runMiddlewares(request, routeMiddlewares, finalHandler,res) {
+  group(prefix) {
+    return {
+      get: (pattern, middlewares, handler) => {
+        this.get(prefix + pattern, middlewares, handler);
+      },
+      post: (pattern, middlewares, handler) => {
+        this.post(prefix + pattern, middlewares, handler);
+      },
+      put: (pattern, middlewares, handler) => {
+        this.put(prefix + pattern, middlewares, handler);
+      },
+      delete: (pattern, middlewares, handler) => {
+        this.delete(prefix + pattern, middlewares, handler);
+      },
+    };
+  }
+
+  async runMiddlewares(request, routeMiddlewares, finalHandler, res) {
     const allMiddlewares = [...this.middlewares, ...(routeMiddlewares || [])];
     let index = 0;
 
@@ -36,7 +53,7 @@ class Router {
       if (index < allMiddlewares.length) {
         const middleware = allMiddlewares[index];
         index++;
-        return await middleware(request, next,res);
+        return await middleware(request, next, res);
       }
       return await finalHandler();
     };
@@ -52,7 +69,7 @@ class Router {
         return {
           handler: route.handler,
           params,
-          middlewares: route.middlewares, 
+          middlewares: route.middlewares,
         };
       }
     }

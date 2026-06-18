@@ -6,13 +6,14 @@ import auth from "./middleware/auth.js";
 const router = new Router();
 
 router.use(logger);
+const api = router.group("/api/v1");
 
-router.get("/", PageController.home);
-router.get("/about",[auth], PageController.about);
-router.get("/contact", PageController.contact);
-router.get("/user/:id", PageController.user);
-router.get("/user/profile/:id", PageController.userProfile);
-router.post("/user",PageController.createUser);
+api.get("/", PageController.home);
+api.get("/about",[auth], PageController.about);
+api.get("/contact", PageController.contact);
+api.get("/user/:id", PageController.user);
+api.get("/user/profile/:id", PageController.userProfile);
+api.post("/user",PageController.createUser);
 
 router.notFound(PageController.notFound);
 
