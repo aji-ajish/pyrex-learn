@@ -15,6 +15,13 @@ const PageController = {
     console.log("Body:", body);
     return res.status(201).json({ message: "User created!", data: body });
   },
+  updateUser: (params, request, res) => {
+    return res.status(200).json({ message: `User ${params.id} updated!` });
+  },
+
+  deleteUser: (params, request, res) => {
+    return res.status(200).json({ message: `User ${params.id} deleted!` });
+  },
 
   notFound: (params, request, res) =>
     res.status(404).send("404 - Page Not Found!"),

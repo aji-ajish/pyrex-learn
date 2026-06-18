@@ -24,6 +24,30 @@ class Router {
     this.routes.push({ method: "POST", pattern, middlewares, handler });
   }
 
+  put(pattern, middlewares, handler) {
+    if (typeof middlewares === "function") {
+      handler = middlewares;
+      middlewares = [];
+    }
+    this.routes.push({ method: "PUT", pattern, middlewares, handler });
+  }
+
+  patch(pattern, middlewares, handler) {
+    if (typeof middlewares === "function") {
+      handler = middlewares;
+      middlewares = [];
+    }
+    this.routes.push({ method: "PATCH", pattern, middlewares, handler });
+  }
+
+  delete(pattern, middlewares, handler) {
+    if (typeof middlewares === "function") {
+      handler = middlewares;
+      middlewares = [];
+    }
+    this.routes.push({ method: "DELETE", pattern, middlewares, handler });
+  }
+
   notFound(handler) {
     this.notFoundHandler = handler;
   }
@@ -38,6 +62,9 @@ class Router {
       },
       put: (pattern, middlewares, handler) => {
         this.put(prefix + pattern, middlewares, handler);
+      },
+      patch: (pattern, middlewares, handler) => {
+        this.patch(prefix + pattern, middlewares, handler);
       },
       delete: (pattern, middlewares, handler) => {
         this.delete(prefix + pattern, middlewares, handler);

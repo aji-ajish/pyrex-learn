@@ -9,11 +9,14 @@ router.use(logger);
 const api = router.group("/api/v1");
 
 api.get("/", PageController.home);
-api.get("/about",[auth], PageController.about);
+api.get("/about", [auth], PageController.about);
 api.get("/contact", PageController.contact);
 api.get("/user/:id", PageController.user);
 api.get("/user/profile/:id", PageController.userProfile);
-api.post("/user",PageController.createUser);
+api.post("/user", PageController.createUser);
+api.put("/user/:id", PageController.updateUser);
+api.patch("/user/:id", PageController.updateUser);
+api.delete("/user/:id", PageController.deleteUser);
 
 router.notFound(PageController.notFound);
 
