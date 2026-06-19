@@ -1,5 +1,5 @@
 import router from "./routes.js";
-import { join } from "path";
+import { bodyParser, safeParseBody } from "./core/BodyParser.js";
 
 const server = Bun.serve({
   port: Bun.env.PORT || 3000,
@@ -11,13 +11,31 @@ const server = Bun.serve({
       return new Response(null, { status: 204 });
     }
 
-    // Static file check — public/ folder
-    const filePath = path === "/" ? "/index.html" : path;
-    const staticPath = join(import.meta.dir, "public", filePath);
+    // Static file check
+    const { join } = await import("path");
+    const staticPath = join(
+      import.meta.dir,
+      "public",
+      path === "/" ? "/index.html" : path,
+    );
     const staticFile = Bun.file(staticPath);
     if (await staticFile.exists()) {
       return new Response(staticFile);
     }
+    console.log("Content-Type:", request.headers.get("Content-Type"));
+    // ✅ Body parse பண்ணு
+    const body = await bodyParser(request);
+    // console.log("Parsed body:", body);
+    // console.log("Body type:", typeof body);
+    // ✅ pyrexRequest wrapper create பண்ணு (request readonly fix)
+    const pyrexRequest = {
+      raw: request,
+      method: request.method,
+      headers: request.headers,
+      url: request.url,
+      parsedBody: body,
+      body: safeParseBody(body),
+    };
 
     const match = router.match(request.method, path);
     if (match) {
@@ -49,9 +67,9 @@ const server = Bun.serve({
       };
 
       return router.runMiddlewares(
-        request,
+        pyrexRequest, // ✅ pyrexRequest use பண்ணு
         match.middlewares,
-        () => match.handler(match.params, request, res),
+        () => match.handler(match.params, pyrexRequest, res),
         res,
       );
     }

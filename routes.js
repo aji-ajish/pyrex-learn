@@ -2,10 +2,12 @@ import PageController from "./controllers/PageController.js";
 import Router from "./core/Router.js";
 import logger from "./middleware/logger.js";
 import auth from "./middleware/auth.js";
+import security from "./middleware/security.js";
 
 const router = new Router();
 
 router.use(logger);
+router.use(security);
 const api = router.group("/api/v1");
 
 api.get("/", PageController.home);

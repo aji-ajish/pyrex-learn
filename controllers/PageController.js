@@ -1,4 +1,4 @@
-import bodyParser from "../core/BodyParser.js";
+import { bodyParser, safeParseBody } from "../core/BodyParser.js";
 
 const PageController = {
   home: (params, request, res) => {
@@ -11,8 +11,7 @@ const PageController = {
   userProfile: (params, request, res) =>
     res.status(200).send(`User Profile name: ${params.id}`),
   createUser: async (params, request, res) => {
-    const body = await bodyParser(request);
-    console.log("Body:", body);
+    const body = request.body; // ✅ files already serialized!
     return res.status(201).json({ message: "User created!", data: body });
   },
   updateUser: (params, request, res) => {

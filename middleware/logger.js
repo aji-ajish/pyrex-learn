@@ -1,4 +1,4 @@
-const logger = (request, next) => {
+const logger = (request, next, res) => {
   const method = request.method;
   const url = new URL(request.url);
   const path = url.pathname;
