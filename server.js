@@ -1,7 +1,7 @@
 import router from "./routes.js";
 
 const server = Bun.serve({
-  port: 3000,
+  port: Bun.env.PORT || 3000,
   fetch(request) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -46,4 +46,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Server is running on http://localhost:${server.port}`);
+console.log(`${Bun.env.APP_NAME} running on http://localhost:${server.port}`);

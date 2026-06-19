@@ -3,7 +3,7 @@ const auth = (request, next,res) => {
   if (!token) {
     return res.status(401).json({ error: "Unauthorized - No token!" });
   }
-  if (token !== "pyrex-secret-123") {
+  if (token !== Bun.env.JWT_SECRET) {
     return res.status(401).json({ error: "Unauthorized - Invalid token!!" });
   }
   return next();
