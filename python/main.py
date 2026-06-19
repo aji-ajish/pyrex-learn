@@ -9,6 +9,12 @@ app = FastAPI()
 # Rate limiting — memory store
 request_counts = defaultdict(list)
 
+# Config — user change பண்ணலாம்
+BRUTE_FORCE_CONFIG = {
+    "routes": ["/login", "/auth", "/admin/login"],  # default routes
+    "max_attempts": 5,
+    "window": 300  # 5 minutes
+}
 
 class RequestData(BaseModel):
     path: str
@@ -16,6 +22,26 @@ class RequestData(BaseModel):
     body: dict = {}
     headers: dict = {}
     ip: str = "unknown"
+
+
+# Dynamic route config
+brute_force_routes = set(["/login", "/auth", "/api/v1/login"])
+
+
+class RouteConfig(BaseModel):
+    routes: list[str]
+
+
+@app.post("/config/brute-force-routes")
+def add_brute_force_routes(config: RouteConfig):
+    for route in config.routes:
+        brute_force_routes.add(route)
+    return {"status": "ok", "routes": list(brute_force_routes)}
+
+
+@app.get("/config/brute-force-routes")
+def get_brute_force_routes():
+    return {"routes": list(brute_force_routes)}
 
 
 def check_sql_injection(data: str) -> bool:
@@ -74,6 +100,29 @@ def check_rate_limit(ip: str, limit: int = 100, window: int = 60) -> bool:
     return False
 
 
+# Brute force tracking
+failed_attempts = defaultdict(list)
+
+
+def check_brute_force(ip: str, path: str) -> bool:
+    # Dynamic routes check
+    if path not in brute_force_routes:
+        return False
+    
+    now = time.time()
+    key = f"{ip}:{path}"  # IP + route combination!
+    
+    failed_attempts[key] = [
+        t for t in failed_attempts[key] 
+        if now - t < BRUTE_FORCE_CONFIG["window"]
+    ]
+    
+    if len(failed_attempts[key]) >= BRUTE_FORCE_CONFIG["max_attempts"]:
+        return True
+    
+    failed_attempts[key].append(now)
+    return False
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -84,23 +133,30 @@ def validate(data: RequestData):
 
     # 1. Rate limit check
     if check_rate_limit(data.ip):
-        return {"allowed": False, "reason": "Rate limit exceeded — too many requests!"}
+        return {"allowed": False, "reason": "Rate limit exceeded!"}
 
-    # 2. Path traversal check
+    # 2. Brute force check ← புது
+    if check_brute_force(data.ip, data.path):
+        return {
+            "allowed": False,
+            "reason": "Too many failed attempts! Try after 5 minutes.",
+        }
+
+    # 3. Path traversal check
     if check_path_traversal(data.path):
         return {"allowed": False, "reason": "Path traversal attack detected!"}
 
     body_str = str(data.body)
 
-    # 3. SQL injection check
+    # 4. SQL injection check
     if check_sql_injection(body_str):
         return {"allowed": False, "reason": "SQL Injection detected!"}
 
-    # 4. XSS check
+    # 5. XSS check
     if check_xss(body_str):
         return {"allowed": False, "reason": "XSS attack detected!"}
 
-    # 5. Command injection check
+    # 6. Command injection check
     if check_command_injection(body_str):
         return {"allowed": False, "reason": "Command injection detected!"}
 

@@ -19,6 +19,9 @@ api.post("/user", PageController.createUser);
 api.put("/user/:id", PageController.updateUser);
 api.patch("/user/:id", PageController.updateUser);
 api.delete("/user/:id", PageController.deleteUser);
+api.post("/login1", PageController.loginUser);
+
+
 
 router.notFound(PageController.notFound);
 

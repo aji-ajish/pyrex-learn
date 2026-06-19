@@ -1,5 +1,22 @@
 import router from "./routes.js";
 import { bodyParser, safeParseBody } from "./core/BodyParser.js";
+import config from "./config/framework.config.js";
+
+async function registerSecurityRoutes() {
+  try {
+    await fetch("http://localhost:8000/config/brute-force-routes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        routes: config.security.bruteForce.routes
+        //        ↑ full path — prefix including!
+      })
+    });
+    console.log("Security routes registered!");
+  } catch(e) {
+    console.log("Python server not ready:", e.message);
+  }
+}
 
 const server = Bun.serve({
   port: Bun.env.PORT || 3000,
@@ -77,3 +94,5 @@ const server = Bun.serve({
 });
 
 console.log(`${Bun.env.APP_NAME} running on http://localhost:${server.port}`);
+
+await registerSecurityRoutes();

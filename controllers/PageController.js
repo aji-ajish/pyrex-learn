@@ -21,6 +21,10 @@ const PageController = {
   deleteUser: (params, request, res) => {
     return res.status(200).json({ message: `User ${params.id} deleted!` });
   },
+  loginUser: async (params, request, res) => {
+    const body = request.body; // ✅ files already serialized!
+    return res.status(201).json({ message: "user login!", data: body });
+  },
 
   notFound: (params, request, res) =>
     res.status(404).send("404 - Page Not Found!"),
