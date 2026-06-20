@@ -6,8 +6,8 @@ export default {
       window: 300,
     },
     // IP config
-    blacklist: ["127.0.0.33","127.0.0.34","127.0.0.35"], // always block
-    whitelist: ["127.0.0.22","127.0.0.23","127.0.0.24"], // empty = allow all
+    blacklist: [], // always block
+    whitelist: [], // empty = allow all
     routeWhitelist: {
       "/admin": ["127.0.0.1"], // admin — office IP மட்டும்
     },
