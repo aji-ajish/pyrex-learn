@@ -3,11 +3,13 @@ import Router from "./core/Router.js";
 import logger from "./middleware/logger.js";
 import auth from "./middleware/auth.js";
 import security from "./middleware/security.js";
+import cors from "./middleware/cors.js";
 
 const router = new Router();
 
 router.use(logger);
 router.use(security);
+router.use(cors);
 const api = router.group("/api/v1");
 
 api.get("/", PageController.home);
@@ -20,8 +22,6 @@ api.put("/user/:id", PageController.updateUser);
 api.patch("/user/:id", PageController.updateUser);
 api.delete("/user/:id", PageController.deleteUser);
 api.post("/login", PageController.loginUser);
-
-
 
 router.notFound(PageController.notFound);
 
