@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.security_service import (
@@ -9,9 +10,11 @@ from services.security_service import (
     check_command_injection,
     check_rate_limit,
     check_brute_force,
-    brute_force_routes
+    brute_force_routes,
 )
 from services.ip_service import check_ip, ip_blacklist, ip_whitelist, whitelist_routes
+from services.csrf_service import generate_token, verify_token
+
 
 class TestSQLInjection:
     def test_detects_drop(self):
@@ -105,3 +108,21 @@ class TestBruteForce:
             check_brute_force("9.9.9.9", "/api/v1/login")
         result = check_brute_force("9.9.9.9", "/api/v1/login")
         assert result == True  # Blocked!
+
+
+class TestCSRF:
+    def test_valid_token(self):
+        token = generate_token("127.0.0.1")
+        assert verify_token(token, "127.0.0.1") == True
+
+    def test_invalid_token(self):
+        assert verify_token("fake-token", "127.0.0.1") == False
+
+    def test_wrong_ip(self):
+        token = generate_token("127.0.0.1")
+        assert verify_token(token, "8.8.8.8") == False
+
+    def test_one_time_use(self):
+        token = generate_token("127.0.0.1")
+        verify_token(token, "127.0.0.1")  # First use
+        assert verify_token(token, "127.0.0.1") == False
