@@ -2,18 +2,50 @@ import router from "./routes.js";
 import { bodyParser, safeParseBody } from "./core/BodyParser.js";
 import config from "./config/framework.config.js";
 
-async function registerSecurityRoutes() {
+async function registerSecurityConfig() {
   try {
-    await fetch("http://localhost:8000/config/brute-force-routes", {
+    const base = "http://localhost:8000";
+    const headers = { "Content-Type": "application/json" };
+
+    // ✅ முதல்ல reset பண்ணு — old config clear!
+    await fetch(`${base}/config/reset`, { method: "POST", headers });
+
+    // Brute force routes
+    await fetch(`${base}/config/brute-force-routes`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        routes: config.security.bruteForce.routes
-        //        ↑ full path — prefix including!
-      })
+      headers,
+      body: JSON.stringify({ routes: config.security.bruteForce.routes }),
     });
-    console.log("Security routes registered!");
-  } catch(e) {
+
+    // Blacklist IPs
+    for (const ip of config.security.blacklist) {
+      await fetch(`${base}/config/blacklist/add`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ip }),
+      });
+    }
+
+    // Whitelist IPs
+    for (const ip of config.security.whitelist) {
+      await fetch(`${base}/config/whitelist/add`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ip }),
+      });
+    }
+
+    // Route whitelist
+    for (const [route, ips] of Object.entries(config.security.routeWhitelist)) {
+      await fetch(`${base}/config/route-whitelist`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ route, ips }),
+      });
+    }
+
+    console.log("Security config registered!");
+  } catch (e) {
     console.log("Python server not ready:", e.message);
   }
 }
@@ -95,4 +127,4 @@ const server = Bun.serve({
 
 console.log(`${Bun.env.APP_NAME} running on http://localhost:${server.port}`);
 
-await registerSecurityRoutes();
+await registerSecurityConfig();

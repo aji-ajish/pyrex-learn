@@ -1,10 +1,16 @@
+const getIP = (request) => {
+  return (
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("cf-connecting-ip") ||  // Cloudflare
+    request.headers.get("x-real-ip") ||          // Nginx
+    "127.0.0.1"                                  // default localhost
+  );
+};
+
 const security = async (request, next, res) => {
   const url = new URL(request.url);
-
-  // ✅ Already parsed body use பண்ணு — again parse வேண்டாம்!
   const body = request.parsedBody || {};
 
-  // File objects-ஐ string-ஆ convert பண்ணு
   const safeBody = {};
   for (const [key, value] of Object.entries(body)) {
     if (Array.isArray(value)) {
@@ -16,6 +22,9 @@ const security = async (request, next, res) => {
     }
   }
 
+  const ip = getIP(request);
+  console.log("Request IP:", ip);  // debug
+
   const response = await fetch("http://localhost:8000/security/validate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -23,12 +32,11 @@ const security = async (request, next, res) => {
       path: url.pathname,
       method: request.method,
       body: safeBody,
-      ip: request.headers.get("x-forwarded-for") || "unknown",
+      ip: ip,
     }),
   });
 
   const result = await response.json();
-
   if (!result.allowed) {
     return res.status(403).json({
       error: "Request blocked!",
