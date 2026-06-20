@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import re
 from collections import defaultdict
 import time
+from datetime import datetime
 
 app = FastAPI()
 
@@ -85,37 +86,52 @@ def health():
 @app.post("/security/validate")
 def validate(data: RequestData):
 
-    # 1. IP check — முதல்ல பண்ணு (fastest)
+    # 1. IP check
     ip_check = check_ip(data.ip, data.path)
     if not ip_check["allowed"]:
+        add_audit_log(data.ip, data.method, data.path, False, ip_check["reason"])
         return {"allowed": False, "reason": ip_check["reason"]}
 
     # 2. Rate limit check
     if check_rate_limit(data.ip):
-        return {"allowed": False, "reason": "Rate limit exceeded!"}
+        reason = "Rate limit exceeded!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
     # 3. Brute force check
     if check_brute_force(data.ip, data.path):
-        return {"allowed": False, "reason": "Too many failed attempts!"}
+        reason = "Too many failed attempts!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
     # 4. Path traversal check
     if check_path_traversal(data.path):
-        return {"allowed": False, "reason": "Path traversal attack detected!"}
+        reason = "Path traversal detected!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
     body_str = str(data.body)
 
     # 5. SQL injection check
     if check_sql_injection(body_str):
-        return {"allowed": False, "reason": "SQL Injection detected!"}
+        reason = "SQL Injection detected!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
     # 6. XSS check
     if check_xss(body_str):
-        return {"allowed": False, "reason": "XSS attack detected!"}
+        reason = "XSS attack detected!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
     # 7. Command injection check
     if check_command_injection(body_str):
-        return {"allowed": False, "reason": "Command injection detected!"}
+        reason = "Command injection detected!"
+        add_audit_log(data.ip, data.method, data.path, False, reason)
+        return {"allowed": False, "reason": reason}
 
+    # ✅ All passed — log success
+    add_audit_log(data.ip, data.method, data.path, True, "Request is safe!")
     return {"allowed": True, "reason": "Request is safe!"}
 
 
@@ -224,6 +240,7 @@ def get_ip_lists():
         "route_whitelist": {k: list(v) for k, v in whitelist_routes.items()},
     }
 
+
 @app.post("/config/reset")
 def reset_config():
     ip_blacklist.clear()
@@ -234,6 +251,7 @@ def reset_config():
     request_counts.clear()
     return {"status": "ok", "message": "Config reset!"}
 
+
 def check_ip(ip: str, path: str) -> dict:
     # 1. Blacklist check
     if ip in ip_blacklist:
@@ -242,10 +260,7 @@ def check_ip(ip: str, path: str) -> dict:
     # 2. Route whitelist — இந்த route-ku specific IPs மட்டும்
     if path in whitelist_routes:
         if ip not in whitelist_routes[path]:
-            return {
-                "allowed": False,
-                "reason": f"IP {ip} not allowed for {path}"
-            }
+            return {"allowed": False, "reason": f"IP {ip} not allowed for {path}"}
         # ✅ Route whitelist match ஆச்சு — allow!
         return {"allowed": True}
 
@@ -254,3 +269,78 @@ def check_ip(ip: str, path: str) -> dict:
         return {"allowed": False, "reason": f"IP {ip} not in whitelist!"}
 
     return {"allowed": True}
+
+
+# ----------------------------------------------------------------
+# Audit log store
+# ----------------------------------------------------------------
+audit_logs = []
+MAX_LOGS = 1000  # Memory-ல max 1000 logs மட்டும்
+
+
+def add_audit_log(ip: str, method: str, path: str, allowed: bool, reason: str):
+    log = {
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ip": ip,
+        "method": method,
+        "path": path,
+        "allowed": allowed,
+        "reason": reason,
+    }
+    audit_logs.append(log)
+
+    # Max logs exceed ஆனா oldest remove பண்ணு
+    if len(audit_logs) > MAX_LOGS:
+        audit_logs.pop(0)
+
+@app.get("/audit/logs")
+def get_audit_logs(
+    limit: int = 50,
+    allowed: bool = None,
+    ip: str = None
+):
+    logs = audit_logs.copy()
+    
+    # Filter by allowed/blocked
+    if allowed is not None:
+        logs = [l for l in logs if l["allowed"] == allowed]
+    
+    # Filter by IP
+    if ip:
+        logs = [l for l in logs if l["ip"] == ip]
+    
+    # Latest first
+    logs = list(reversed(logs))
+    
+    return {
+        "total": len(logs),
+        "logs": logs[:limit]
+    }
+
+@app.get("/audit/stats")
+def get_audit_stats():
+    total = len(audit_logs)
+    blocked = len([l for l in audit_logs if not l["allowed"]])
+    allowed = total - blocked
+    
+    # Top blocked IPs
+    from collections import Counter
+    blocked_logs = [l for l in audit_logs if not l["allowed"]]
+    top_ips = Counter(l["ip"] for l in blocked_logs).most_common(5)
+    
+    # Top attack types
+    top_attacks = Counter(l["reason"] for l in blocked_logs).most_common(5)
+    
+    return {
+        "total_requests": total,
+        "allowed": allowed,
+        "blocked": blocked,
+        "block_rate": f"{round(blocked/total*100, 1)}%" if total > 0 else "0%",
+        "top_blocked_ips": [{"ip": ip, "count": c} for ip, c in top_ips],
+        "top_attacks": [{"reason": r, "count": c} for r, c in top_attacks]
+    }
+
+@app.delete("/audit/clear")
+def clear_audit_logs():
+    audit_logs.clear()
+    return {"status": "ok", "message": "Audit logs cleared!"}
