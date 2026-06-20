@@ -23,7 +23,13 @@ const security = async (request, next, res) => {
   }
 
   const ip = getIP(request);
-  console.log("Request IP:", ip);  // debug
+  console.log("Request IP:", ip);
+
+  // ✅ Headers pass பண்ணு — CSRF token இங்க இருக்கும்!
+  const headers = {};
+  for (const [key, value] of request.headers.entries()) {
+    headers[key] = value;
+  }
 
   const response = await fetch("http://localhost:8000/security/validate", {
     method: "POST",
@@ -32,6 +38,7 @@ const security = async (request, next, res) => {
       path: url.pathname,
       method: request.method,
       body: safeBody,
+      headers: headers,  // ✅ headers add பண்ணு
       ip: ip,
     }),
   });

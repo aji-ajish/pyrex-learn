@@ -16,3 +16,7 @@ class RouteWhitelist(BaseModel):
 
 class RouteConfig(BaseModel):
     routes: list[str]
+
+class CSRFValidate(BaseModel):
+    token: str
+    ip: str

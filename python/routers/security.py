@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from models.schemas import RequestData
+from services import csrf_service
 from services import ip_service, security_service, audit_service
 
 router = APIRouter()
@@ -25,7 +26,19 @@ def validate(data: RequestData):
         audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
         return {"allowed": False, "reason": reason}
 
-    # 4. Path traversal
+    # 4. CSRF check — POST, PUT, DELETE, PATCH மட்டும்
+    if data.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        csrf_token = data.headers.get("x-csrf-token", "")
+        if not csrf_token:
+            reason = "CSRF token missing!"
+            audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
+            return {"allowed": False, "reason": reason}
+        if not csrf_service.verify_token(csrf_token, data.ip):
+            reason = "CSRF token invalid or expired!"
+            audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
+            return {"allowed": False, "reason": reason}
+
+    # 5. Path traversal
     if security_service.check_path_traversal(data.path):
         reason = "Path traversal detected!"
         audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
@@ -33,19 +46,19 @@ def validate(data: RequestData):
 
     body_str = str(data.body)
 
-    # 5. SQL injection
+    # 6. SQL injection
     if security_service.check_sql_injection(body_str):
         reason = "SQL Injection detected!"
         audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
         return {"allowed": False, "reason": reason}
 
-    # 6. XSS
+    # 7. XSS
     if security_service.check_xss(body_str):
         reason = "XSS attack detected!"
         audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)
         return {"allowed": False, "reason": reason}
 
-    # 7. Command injection
+    # 8. Command injection
     if security_service.check_command_injection(body_str):
         reason = "Command injection detected!"
         audit_service.add_audit_log(data.ip, data.method, data.path, False, reason)

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import security, config, audit
+from routers import security, config, audit, csrf
 
 app = FastAPI(
     title="Pyrex Security Layer",
@@ -13,3 +13,4 @@ def health():
 app.include_router(security.router)
 app.include_router(config.router)
 app.include_router(audit.router)
+app.include_router(csrf.router)
