@@ -54,6 +54,10 @@ api.get("/editor/posts", [auth, role(["admin", "editor"])], (params, request, re
 
 api.post("/refresh", AuthController.refresh);
 
+api.post("/2fa/enable", [auth], AuthController.enable2FA);
+api.post("/2fa/verify", [auth], AuthController.verify2FA);
+api.post("/login-2fa", AuthController.loginWith2FA);
+
 router.notFound(PageController.notFound);
 
 export default router;

@@ -1,5 +1,6 @@
 import prisma from "../core/db.js";
 import AuthService from "../core/AuthService.js";
+import TwoFactorService from "../core/TwoFactorService.js";
 
 const AuthController = {
   // POST /api/v1/register
@@ -15,10 +16,10 @@ const AuthController = {
       return res.status(400).json({ error: "Email already registered!" });
     }
 
-    // Password hash 
+    // Password hash
     const hashedPassword = await AuthService.hashPassword(body.password);
 
-    // User create 
+    // User create
     const user = await prisma.user.create({
       data: {
         name: body.name,
@@ -45,7 +46,7 @@ const AuthController = {
   login: async (params, request, res) => {
     const body = request.body;
 
-    // User find 
+    // User find
     const user = await prisma.user.findUnique({
       where: { email: body.email },
     });
@@ -54,8 +55,11 @@ const AuthController = {
       return res.status(401).json({ error: "Invalid email or password!" });
     }
 
-    // Password compare 
-    const isValid = await AuthService.comparePassword(body.password, user.password);
+    // Password compare
+    const isValid = await AuthService.comparePassword(
+      body.password,
+      user.password,
+    );
 
     if (!isValid) {
       return res.status(401).json({ error: "Invalid email or password!" });
@@ -87,7 +91,9 @@ const AuthController = {
     const newToken = await AuthService.refreshAccessToken(refreshToken);
 
     if (!newToken) {
-      return res.status(401).json({ error: "Invalid or expired refresh token!" });
+      return res
+        .status(401)
+        .json({ error: "Invalid or expired refresh token!" });
     }
 
     return res.status(200).json({
@@ -105,6 +111,108 @@ const AuthController = {
     }
 
     return res.status(200).json({ message: "Logged out successfully!" });
+  },
+  // ✅ 2FA setup — QR code generate
+  enable2FA: async (params, request, res) => {
+    const userId = request.user.id;
+
+    const secret = TwoFactorService.generateSecret();
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const qrCode = await TwoFactorService.generateQRCode(user.email, secret);
+
+    // Secret DB-ல save பண்ணு (இன்னும் enable ஆகலை)
+    await prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorSecret: secret },
+    });
+
+    return res.status(200).json({
+      message: "Scan this QR code with Google Authenticator",
+      qrCode,
+      secret,
+    });
+  },
+
+  // ✅ 2FA verify + enable
+  verify2FA: async (params, request, res) => {
+    const body = request.body;
+    const userId = request.user.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({ error: "2FA setup not started!" });
+    }
+
+    const isValid = TwoFactorService.verifyCode(
+      user.twoFactorSecret,
+      body.code,
+    );
+
+    if (!isValid) {
+      return res.status(400).json({ error: "Invalid 2FA code!" });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorEnabled: true },
+    });
+
+    return res.status(200).json({ message: "2FA enabled successfully!" });
+  },
+
+  // ✅ Login with 2FA
+  loginWith2FA: async (params, request, res) => {
+    const body = request.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid email or password!" });
+    }
+
+    const isValid = await AuthService.comparePassword(
+      body.password,
+      user.password,
+    );
+
+    if (!isValid) {
+      return res.status(401).json({ error: "Invalid email or password!" });
+    }
+
+    // 2FA enabled-ஆ check பண்ணு
+    if (user.twoFactorEnabled) {
+      if (!body.code) {
+        return res.status(200).json({
+          requires2FA: true,
+          message: "Enter your 2FA code!",
+        });
+      }
+
+      const isCodeValid = TwoFactorService.verifyCode(
+        user.twoFactorSecret,
+        body.code,
+      );
+
+      if (!isCodeValid) {
+        return res.status(401).json({ error: "Invalid 2FA code!" });
+      }
+    }
+
+    const payload = { id: user.id, email: user.email, role: user.role };
+    const token = AuthService.generateToken(payload);
+    const refreshToken = AuthService.generateRefreshToken(payload);
+
+    await AuthService.createSession(user.id, token, refreshToken);
+
+    return res.status(200).json({
+      message: "Login successful!",
+      token,
+      refreshToken,
+      user: { id: user.id, name: user.name, email: user.email },
+    });
   },
 };
 

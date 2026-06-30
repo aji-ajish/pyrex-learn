@@ -18,7 +18,7 @@ const AuthService = {
 
   // Access token — short-lived
   generateToken: (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });  // ✅ 15 minutes
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "60m" });  // ✅ 15 minutes
   },
 
   // Refresh token — long-lived
