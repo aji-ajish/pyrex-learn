@@ -36,3 +36,13 @@ model Session {
   @@index([refreshToken(length: 255)])
 }
 
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @db.Text
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token(length: 255)])
+}

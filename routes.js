@@ -58,6 +58,9 @@ api.post("/2fa/enable", [auth], AuthController.enable2FA);
 api.post("/2fa/verify", [auth], AuthController.verify2FA);
 api.post("/login-2fa", AuthController.loginWith2FA);
 
+api.post("/forgot-password", AuthController.forgotPassword);
+api.post("/reset-password", AuthController.resetPassword);
+
 router.notFound(PageController.notFound);
 
 export default router;

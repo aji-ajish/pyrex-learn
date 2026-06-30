@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "./db.js";
+import crypto from "crypto";
 
 const JWT_SECRET = Bun.env.JWT_SECRET || "pyrex-secret-123";
 
@@ -18,12 +19,12 @@ const AuthService = {
 
   // Access token — short-lived
   generateToken: (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "60m" });  // ✅ 15 minutes
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "60m" }); // ✅ 15 minutes
   },
 
   // Refresh token — long-lived
   generateRefreshToken: (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });  // ✅ 7 days
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" }); // ✅ 7 days
   },
 
   verifyToken: (token) => {
@@ -98,6 +99,37 @@ const AuthService = {
     });
 
     return newAccessToken;
+  },
+  // ✅ Reset token generate பண்ணு
+  generateResetToken: async (userId) => {
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await prisma.passwordReset.create({
+      data: { userId, token, expiresAt },
+    });
+
+    return token;
+  },
+
+  // ✅ Reset token verify பண்ணு
+  verifyResetToken: async (token) => {
+    const reset = await prisma.passwordReset.findFirst({
+      where: { token, used: false },
+    });
+
+    if (!reset) return null;
+    if (new Date() > reset.expiresAt) return null;
+
+    return reset;
+  },
+
+  // ✅ Token used-ஆ mark பண்ணு
+  markTokenUsed: async (resetId) => {
+    await prisma.passwordReset.update({
+      where: { id: resetId },
+      data: { used: true },
+    });
   },
 };
 

@@ -214,6 +214,55 @@ const AuthController = {
       user: { id: user.id, name: user.name, email: user.email },
     });
   },
+  // ✅ Step 1 — Forgot password
+  forgotPassword: async (params, request, res) => {
+    const body = request.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+    });
+
+    // Security: user இல்லாட்டியும் same message — email exist-ஆ இல்லையான்னு hacker கண்டுபிடிக்க கூடாது!
+    if (!user) {
+      return res.status(200).json({
+        message: "If this email exists, a reset link has been sent!",
+      });
+    }
+
+    const token = await AuthService.generateResetToken(user.id);
+
+    // Real app-ல email அனுப்பணும் — இப்போதைக்கு console-ல print பண்ணலாம்
+    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+    console.log("📧 Password Reset Link:", resetLink);
+
+    return res.status(200).json({
+      message: "If this email exists, a reset link has been sent!",
+      // Development மட்டும் — production-ல இதை remove பண்ணணும்!
+      devToken: token,
+    });
+  },
+
+  // ✅ Step 2 — Reset password
+  resetPassword: async (params, request, res) => {
+    const body = request.body;
+
+    const reset = await AuthService.verifyResetToken(body.token);
+
+    if (!reset) {
+      return res.status(400).json({ error: "Invalid or expired reset token!" });
+    }
+
+    const hashedPassword = await AuthService.hashPassword(body.newPassword);
+
+    await prisma.user.update({
+      where: { id: reset.userId },
+      data: { password: hashedPassword },
+    });
+
+    await AuthService.markTokenUsed(reset.id);
+
+    return res.status(200).json({ message: "Password reset successful!" });
+  },
 };
 
 export default AuthController;
