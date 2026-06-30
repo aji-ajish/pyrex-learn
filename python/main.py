@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import security, config, audit, csrf
+from routers import security, config, audit, csrf,users
 
 app = FastAPI(
     title="Pyrex Security Layer",
@@ -14,3 +14,4 @@ app.include_router(security.router)
 app.include_router(config.router)
 app.include_router(audit.router)
 app.include_router(csrf.router)
+app.include_router(users.router)
