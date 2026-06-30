@@ -5,23 +5,23 @@ import prisma from "./db.js";
 const JWT_SECRET = Bun.env.JWT_SECRET || "pyrex-secret-123";
 
 const AuthService = {
-  // Password hash 
+  // Password hash
   hashPassword: async (password) => {
     const salt = await bcrypt.genSalt(10);
     return await bcrypt.hash(password, salt);
   },
 
-  // Password compare 
+  // Password compare
   comparePassword: async (password, hash) => {
     return await bcrypt.compare(password, hash);
   },
 
-  // JWT token generate 
+  // JWT token generate
   generateToken: (payload) => {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
   },
 
-  // JWT token verify 
+  // JWT token verify
   verifyToken: (token) => {
     try {
       return jwt.verify(token, JWT_SECRET);
@@ -30,7 +30,7 @@ const AuthService = {
     }
   },
 
-  // ✅ Session create 
+  // ✅ Session create
   createSession: async (userId, token) => {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     return await prisma.session.create({
@@ -38,24 +38,27 @@ const AuthService = {
     });
   },
 
-  // ✅ Session valid-ஆ check 
+  // ✅ Session valid-ஆ check
   isSessionValid: async (token) => {
-    const session = await prisma.session.findUnique({
+    const session = await prisma.session.findFirst({
       where: { token },
     });
 
     if (!session) return false;
     if (new Date() > session.expiresAt) {
-      await prisma.session.delete({ where: { token } });
+      await prisma.session.delete({ where: { id: session.id } });
       return false;
     }
     return true;
   },
 
-  // ✅ Logout — session delete 
+  // ✅ Logout — session delete
   destroySession: async (token) => {
     try {
-      await prisma.session.delete({ where: { token } });
+      const session = await prisma.session.findFirst({ where: { token } });
+      if (session) {
+        await prisma.session.delete({ where: { id: session.id } });
+      }
       return true;
     } catch (e) {
       return false;

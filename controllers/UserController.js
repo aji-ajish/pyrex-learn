@@ -36,19 +36,20 @@ const UserController = {
   },
 
   // PUT /api/v1/users/:id
-  update: async (params, request, res) => {
-    const body = request.body;
+update: async (params, request, res) => {
+  const body = request.body;
 
-    const user = await prisma.user.update({
-      where: { id: Number(params.id) },
-      data: {
-        name: body.name,
-        email: body.email,
-      },
-    });
+  const user = await prisma.user.update({
+    where: { id: Number(params.id) },
+    data: {
+      name: body.name,
+      email: body.email,
+      role: body.role,  
+    },
+  });
 
-    return res.status(200).json({ message: "User updated!", user });
-  },
+  return res.status(200).json({ message: "User updated!", user });
+},
 
   // DELETE /api/v1/users/:id
   destroy: async (params, request, res) => {

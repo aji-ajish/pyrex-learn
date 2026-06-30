@@ -6,6 +6,7 @@ import logger from "./middleware/logger.js";
 import auth from "./middleware/auth.js";
 import security from "./middleware/security.js";
 import cors from "./middleware/cors.js";
+import role from "./middleware/role.js";
 
 const router = new Router();
 
@@ -40,6 +41,16 @@ api.get("/profile", [auth], (params, request, res) => {
 });
 
 api.post("/logout", [auth], AuthController.logout);
+
+// Admin மட்டும் access பண்ண முடியும்
+api.get("/admin/dashboard", [auth, role(["admin"])], (params, request, res) => {
+  return res.status(200).json({ message: "Welcome Admin!", user: request.user });
+});
+
+// Admin அல்லது Editor access பண்ணலாம்
+api.get("/editor/posts", [auth, role(["admin", "editor"])], (params, request, res) => {
+  return res.status(200).json({ message: "Editor area!", user: request.user });
+});
 
 router.notFound(PageController.notFound);
 
