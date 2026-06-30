@@ -1,6 +1,6 @@
 import AuthService from "../core/AuthService.js";
 
-const auth = (request, next, res) => {
+const auth = async (request, next, res) => {
   const authHeader = request.headers.get("Authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -14,9 +14,14 @@ const auth = (request, next, res) => {
     return res.status(401).json({ error: "Invalid or expired token!" });
   }
 
-  // attach user info in request
-  request.user = decoded;
+  // ✅ check the Session is valide in DB
+  const sessionValid = await AuthService.isSessionValid(token);
 
+  if (!sessionValid) {
+    return res.status(401).json({ error: "Session expired or logged out!" });
+  }
+
+  request.user = decoded;
   return next();
 };
 

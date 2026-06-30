@@ -34,6 +34,8 @@ const AuthController = {
       role: user.role,
     });
 
+    await AuthService.createSession(user.id, token);  // ✅ session create
+
     return res.status(201).json({
       message: "User registered!",
       token,
@@ -68,11 +70,25 @@ const AuthController = {
       role: user.role,
     });
 
+    await AuthService.createSession(user.id, token);  // ✅ session create
+
     return res.status(200).json({
       message: "Login successful!",
       token,
       user: { id: user.id, name: user.name, email: user.email },
     });
+  },
+
+  // ✅ Logout
+  logout: async (params, request, res) => {
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.split(" ")[1];
+
+    if (token) {
+      await AuthService.destroySession(token);
+    }
+
+    return res.status(200).json({ message: "Logged out successfully!" });
   },
 };
 

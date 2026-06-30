@@ -39,6 +39,8 @@ api.get("/profile", [auth], (params, request, res) => {
   return res.status(200).json({ message: "Protected route!", user: request.user });
 });
 
+api.post("/logout", [auth], AuthController.logout);
+
 router.notFound(PageController.notFound);
 
 export default router;
