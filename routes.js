@@ -52,6 +52,8 @@ api.get("/editor/posts", [auth, role(["admin", "editor"])], (params, request, re
   return res.status(200).json({ message: "Editor area!", user: request.user });
 });
 
+api.post("/refresh", AuthController.refresh);
+
 router.notFound(PageController.notFound);
 
 export default router;

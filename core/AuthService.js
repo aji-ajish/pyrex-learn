@@ -16,12 +16,16 @@ const AuthService = {
     return await bcrypt.compare(password, hash);
   },
 
-  // JWT token generate
+  // Access token — short-lived
   generateToken: (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });  // ✅ 15 minutes
   },
 
-  // JWT token verify
+  // Refresh token — long-lived
+  generateRefreshToken: (payload) => {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });  // ✅ 7 days
+  },
+
   verifyToken: (token) => {
     try {
       return jwt.verify(token, JWT_SECRET);
@@ -30,15 +34,15 @@ const AuthService = {
     }
   },
 
-  // ✅ Session create
-  createSession: async (userId, token) => {
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  // Session create — both tokens store
+  createSession: async (userId, token, refreshToken) => {
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     return await prisma.session.create({
-      data: { userId, token, expiresAt },
+      data: { userId, token, refreshToken, expiresAt },
     });
   },
 
-  // ✅ Session valid-ஆ check
+  // ✅ check Session valid
   isSessionValid: async (token) => {
     const session = await prisma.session.findFirst({
       where: { token },
@@ -63,6 +67,37 @@ const AuthService = {
     } catch (e) {
       return false;
     }
+  },
+
+  // ✅ Refresh token-ஓட புது access token generate பண்ணு
+  refreshAccessToken: async (refreshToken) => {
+    const decoded = AuthService.verifyToken(refreshToken);
+    if (!decoded) return null;
+
+    const session = await prisma.session.findFirst({
+      where: { refreshToken },
+    });
+
+    if (!session) return null;
+    if (new Date() > session.expiresAt) {
+      await prisma.session.delete({ where: { id: session.id } });
+      return null;
+    }
+
+    // புது access token generate பண்ணு
+    const newAccessToken = AuthService.generateToken({
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+    });
+
+    // Session-ல new token update பண்ணு
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { token: newAccessToken },
+    });
+
+    return newAccessToken;
   },
 };
 

@@ -23,11 +23,13 @@ model User {
 }
 
 model Session {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  token     String   @db.Text
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  token        String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 
   @@index([token(length: 255)])
+  @@index([refreshToken(length: 255)])
 }

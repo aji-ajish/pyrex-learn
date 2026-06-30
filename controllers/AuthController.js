@@ -27,18 +27,16 @@ const AuthController = {
       },
     });
 
-    // Token generate 
-    const token = AuthService.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const payload = { id: user.id, email: user.email, role: user.role };
+    const token = AuthService.generateToken(payload);
+    const refreshToken = AuthService.generateRefreshToken(payload);
 
-    await AuthService.createSession(user.id, token);  // ✅ session create
+    await AuthService.createSession(user.id, token, refreshToken);
 
     return res.status(201).json({
       message: "User registered!",
       token,
+      refreshToken,
       user: { id: user.id, name: user.name, email: user.email },
     });
   },
@@ -63,23 +61,41 @@ const AuthController = {
       return res.status(401).json({ error: "Invalid email or password!" });
     }
 
-    // Token generate 
-    const token = AuthService.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const payload = { id: user.id, email: user.email, role: user.role };
+    const token = AuthService.generateToken(payload);
+    const refreshToken = AuthService.generateRefreshToken(payload);
 
-    await AuthService.createSession(user.id, token);  // ✅ session create
+    await AuthService.createSession(user.id, token, refreshToken);
 
     return res.status(200).json({
       message: "Login successful!",
       token,
+      refreshToken,
       user: { id: user.id, name: user.name, email: user.email },
     });
   },
 
-  // ✅ Logout
+  // ✅ Refresh access token
+  refresh: async (params, request, res) => {
+    const body = request.body;
+    const { refreshToken } = body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: "Refresh token required!" });
+    }
+
+    const newToken = await AuthService.refreshAccessToken(refreshToken);
+
+    if (!newToken) {
+      return res.status(401).json({ error: "Invalid or expired refresh token!" });
+    }
+
+    return res.status(200).json({
+      message: "Token refreshed!",
+      token: newToken,
+    });
+  },
+
   logout: async (params, request, res) => {
     const authHeader = request.headers.get("Authorization");
     const token = authHeader?.split(" ")[1];
