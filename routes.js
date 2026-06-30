@@ -22,6 +22,7 @@ api.put("/user/:id", PageController.updateUser);
 api.patch("/user/:id", PageController.updateUser);
 api.delete("/user/:id", PageController.deleteUser);
 api.post("/login", PageController.loginUser);
+api.get("/test-db", PageController.testDb)
 
 router.notFound(PageController.notFound);
 
