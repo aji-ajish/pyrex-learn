@@ -35,6 +35,10 @@ api.delete("/users/:id", UserController.destroy);
 api.post("/register", AuthController.register);
 api.post("/login", AuthController.login);
 
+api.get("/profile", [auth], (params, request, res) => {
+  return res.status(200).json({ message: "Protected route!", user: request.user });
+});
+
 router.notFound(PageController.notFound);
 
 export default router;
