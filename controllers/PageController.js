@@ -15,6 +15,13 @@ const PageController = {
       user: { name: "Ajish" }, // navbar-ku
     });
   },
+  dashboard: (params, request, res) => {
+    return res.render("pages/dashboard.html", { title: "Dashboard" });
+  },
+
+  blog: (params, request, res) => {
+    return res.render("pages/blog.html", { title: "Blog" });
+  },
   about: (params, request, res) =>
     res.status(200).send("This is the About Page!"),
   contact: (params, request, res) => res.status(302).redirect("/user/20"),

@@ -15,7 +15,12 @@ router.use(security);
 router.use(cors);
 const api = router.group("/api/v1");
 
+// SSR — default
 router.get("/", PageController.home);
+// SPA — dashboard
+router.get("/dashboard", { mode: "SPA" }, PageController.dashboard);
+// SSG — blog (cache-ல store ஆகும்)
+router.get("/blog", { mode: "SSG" }, PageController.blog);
 router.get("/about", PageController.about);
 router.get("/contact", PageController.contact);
 api.get("/user/:id", PageController.user);

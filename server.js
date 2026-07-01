@@ -2,6 +2,7 @@ import router from "./routes.js";
 import { bodyParser, safeParseBody } from "./core/BodyParser.js";
 import config from "./config/framework.config.js";
 import TemplateEngine from "./core/TemplateEngine.js";
+import SSGBuilder from "./core/SSGBuilder.js";
 
 async function registerSecurityConfig() {
   try {
@@ -90,6 +91,57 @@ const server = Bun.serve({
     if (match) {
       const res = {
         render: (templatePath, data = {}) => {
+          // SSG mode — cache use பண்ணு
+          if (match.mode === "SSG") {
+            const html = SSGBuilder.serve(path, () =>
+              TemplateEngine.render(templatePath, data),
+            );
+            return new Response(html, {
+              status: 200,
+              headers: { "Content-Type": "text/html" },
+            });
+          }
+
+          // SPA mode
+          if (match.mode === "SPA") {
+            const html = TemplateEngine.render(templatePath, data);
+            const spaScript = `<script>
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest("a");
+      if (!link) return;
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("http") || href.startsWith("#")) return;
+      e.preventDefault();
+      history.pushState({}, "", href);
+      loadPage(href);
+    });
+
+    async function loadPage(url) {
+      const res = await fetch(url, {
+        headers: { "X-SPA-Request": "true" }
+      });
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      document.querySelector("main").innerHTML =
+        doc.querySelector("main").innerHTML;
+      document.title = doc.title;
+    }
+
+    window.addEventListener("popstate", () => {
+      loadPage(location.pathname);
+    });
+  <\/script>`;
+
+            // ✅ </body> முன்னே inject பண்ணு
+            const finalHtml = html.replace("</body>", spaScript + "\n</body>");
+            return new Response(finalHtml, {
+              status: 200,
+              headers: { "Content-Type": "text/html" },
+            });
+          }
+
+          // SSR mode (default)
           const html = TemplateEngine.render(templatePath, data);
           return new Response(html, {
             status: 200,

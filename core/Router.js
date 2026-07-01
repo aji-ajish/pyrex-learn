@@ -8,12 +8,23 @@ class Router {
     this.middlewares.push(middleware);
   }
 
-  get(pattern, middlewares, handler) {
-    if (typeof middlewares === "function") {
-      handler = middlewares;
-      middlewares = [];
+  get(pattern, optionsOrMiddlewares, handler) {
+    let middlewares = [];
+    let mode = "SSR"; // default
+
+    if (typeof optionsOrMiddlewares === "function") {
+      // router.get("/path", handler)
+      handler = optionsOrMiddlewares;
+    } else if (Array.isArray(optionsOrMiddlewares)) {
+      // router.get("/path", [middleware], handler)
+      middlewares = optionsOrMiddlewares;
+    } else if (typeof optionsOrMiddlewares === "object") {
+      // router.get("/path", { mode: "SPA" }, handler)
+      mode = optionsOrMiddlewares.mode || "SSR";
+      middlewares = optionsOrMiddlewares.middlewares || [];
     }
-    this.routes.push({ method: "GET", pattern, middlewares, handler });
+
+    this.routes.push({ method: "GET", pattern, middlewares, handler, mode });
   }
 
   post(pattern, middlewares, handler) {
@@ -54,20 +65,20 @@ class Router {
 
   group(prefix) {
     return {
-      get: (pattern, middlewares, handler) => {
-        this.get(prefix + pattern, middlewares, handler);
+      get: (pattern, optionsOrMiddlewares, handler) => {
+        this.get(prefix + pattern, optionsOrMiddlewares, handler);
       },
-      post: (pattern, middlewares, handler) => {
-        this.post(prefix + pattern, middlewares, handler);
+      post: (pattern, optionsOrMiddlewares, handler) => {
+        this.post(prefix + pattern, optionsOrMiddlewares, handler);
       },
-      put: (pattern, middlewares, handler) => {
-        this.put(prefix + pattern, middlewares, handler);
+      put: (pattern, optionsOrMiddlewares, handler) => {
+        this.put(prefix + pattern, optionsOrMiddlewares, handler);
       },
-      patch: (pattern, middlewares, handler) => {
-        this.patch(prefix + pattern, middlewares, handler);
+      patch: (pattern, optionsOrMiddlewares, handler) => {
+        this.patch(prefix + pattern, optionsOrMiddlewares, handler);
       },
-      delete: (pattern, middlewares, handler) => {
-        this.delete(prefix + pattern, middlewares, handler);
+      delete: (pattern, optionsOrMiddlewares, handler) => {
+        this.delete(prefix + pattern, optionsOrMiddlewares, handler);
       },
     };
   }
@@ -97,11 +108,17 @@ class Router {
           handler: route.handler,
           params,
           middlewares: route.middlewares,
+          mode: route.mode || "SSR", // ✅ mode return பண்ணு
         };
       }
     }
     if (this.notFoundHandler) {
-      return { handler: this.notFoundHandler, params: {}, middlewares: [] };
+      return {
+        handler: this.notFoundHandler,
+        params: {},
+        middlewares: [],
+        mode: "SSR",
+      };
     }
     return null;
   }
