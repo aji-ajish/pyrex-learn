@@ -1,0 +1,101 @@
+{% extends "admin/layout.html" %}
+
+{% block content %}
+<div class="card" style="max-width:500px">
+    <div class="card-body">
+        <div id="error" class="alert alert-danger d-none"></div>
+
+        <div class="mb-3">
+            <label>Name</label>
+            <input type="text" id="name" class="form-control" value="{{ user.name }}">
+        </div>
+        <div class="mb-3">
+            <label>Email</label>
+            <input type="email" id="email" class="form-control" value="{{ user.email }}">
+        </div>
+        <div class="mb-3">
+            <label>Password (leave blank to keep same)</label>
+            <input type="password" id="password" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label>Two-Factor Auth</label>
+            <div>
+                {% if user.twoFactorEnabled %}
+                <span class="badge bg-success">Currently Enabled</span>
+                <button type="button" class="btn btn-sm btn-warning ms-2" onclick="disable2FA()">
+                    Disable 2FA
+                </button>
+                {% endif %}
+                {% if !user.twoFactorEnabled %}
+                <span class="badge bg-secondary">Currently Disabled</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <label>Role</label>
+            <select id="role" class="form-control">
+                <option value="user" {% if userRole==="user" %}selected{% endif %}>User</option>
+                <option value="editor" {% if userRole==="editor" %}selected{% endif %}>Editor</option>
+                <option value="admin" {% if userRole==="admin" %}selected{% endif %}>Admin</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="submitForm()">Save</button>
+        <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+    </div>
+</div>
+
+<script>
+    async function submitForm() {
+        // ✅ CSRF token எடு
+        const csrfRes = await fetch("/csrf-token");
+        const { csrf_token } = await csrfRes.json();
+
+        const data = {
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            role: document.getElementById("role").value,
+        };
+
+        const password = document.getElementById("password").value;
+        if (password) data.password = password;
+
+        // ✅ formAction-ஐ use பண்ணு
+        const method = "{{ formMethod }}";
+        const action = "{{ formAction }}";
+
+        const res = await fetch(action, {
+            method: method,
+            headers: {
+                "Content-Type": "application/json",
+                "x-csrf-token": csrf_token,
+            },
+            credentials: "include",
+            body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+
+        if (result.error) {
+            document.getElementById("error").textContent = result.error;
+            document.getElementById("error").classList.remove("d-none");
+            return;
+        }
+
+        window.location.href = "/admin/users";
+    }
+    async function disable2FA() {
+        if (!confirm("Disable 2FA for this user?")) return;
+
+        const csrfRes = await fetch("/csrf-token");
+        const { csrf_token } = await csrfRes.json();
+
+        await fetch("/admin/users/{{ user.id }}/disable-2fa", {
+            method: "POST",
+            headers: { "x-csrf-token": csrf_token },
+            credentials: "include"
+        });
+
+        window.location.reload();
+    }
+</script>
+{% endblock %}

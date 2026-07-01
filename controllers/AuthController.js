@@ -71,12 +71,27 @@ const AuthController = {
 
     await AuthService.createSession(user.id, token, refreshToken);
 
-    return res.status(200).json({
-      message: "Login successful!",
-      token,
-      refreshToken,
-      user: { id: user.id, name: user.name, email: user.email },
-    });
+    // ✅ Cookie set பண்ணு
+    const cookieOptions =
+      process.env.NODE_ENV === "production"
+        ? "HttpOnly; Path=/; SameSite=Strict; Secure; Max-Age=3600"
+        : "HttpOnly; Path=/; SameSite=Strict; Max-Age=3600";
+
+    return new Response(
+      JSON.stringify({
+        message: "Login successful!",
+        token,
+        refreshToken,
+        user: { id: user.id, name: user.name, email: user.email },
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": `pyrex_token=${token}; ${cookieOptions}`,
+        },
+      },
+    );
   },
 
   // ✅ Refresh access token

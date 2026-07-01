@@ -1,6 +1,7 @@
 import PageController from "./controllers/PageController.js";
 import UserController from "./controllers/UserController.js";
 import AuthController from "./controllers/AuthController.js";
+import AdminController from "./controllers/AdminController.js";
 import Router from "./core/Router.js";
 import logger from "./middleware/logger.js";
 import auth from "./middleware/auth.js";
@@ -65,6 +66,29 @@ api.post("/login-2fa", AuthController.loginWith2FA);
 
 api.post("/forgot-password", AuthController.forgotPassword);
 api.post("/reset-password", AuthController.resetPassword);
+
+// Admin routes — auth + admin role required
+router.get("/admin", [auth, role(["admin"])], AdminController.dashboard);
+router.get("/admin/users", [auth, role(["admin"])], AdminController.users);
+router.get("/admin/users/create", [auth, role(["admin"])], AdminController.createUserForm);
+router.get("/admin/users/:id/edit", [auth, role(["admin"])], AdminController.editUserForm);
+router.get("/admin/users/:id/delete", [auth, role(["admin"])], AdminController.deleteUser);
+router.get("/admin/audit", [auth, role(["admin"])], AdminController.auditPage);
+router.get("/admin/audit/stats", [auth, role(["admin"])], AdminController.auditStats);
+router.get("/admin/audit/logs", [auth, role(["admin"])], AdminController.auditLogs);
+router.delete("/admin/audit/clear", [auth, role(["admin"])], AdminController.auditClear);
+router.post("/admin/users/:id/disable-2fa", [auth, role(["admin"])], AdminController.disable2FA);
+// Admin login — auth இல்லாம public!
+router.get("/admin/login", (params, request, res) => {
+  return res.render("admin/login.html", { title: "Admin Login" });
+});
+
+// CSRF token proxy — browser இருந்து directly Python call பண்ண வேண்டாம்!
+router.get("/csrf-token", async (params, request, res) => {
+  const response = await fetch("http://localhost:8000/csrf/token");
+  const data = await response.json();
+  return res.status(200).json(data);
+});
 
 router.notFound(PageController.notFound);
 

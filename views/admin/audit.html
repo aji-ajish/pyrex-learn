@@ -1,0 +1,177 @@
+{% extends "admin/layout.html" %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card" style="background:#2563eb;border-radius:12px;padding:20px;color:white">
+            <div style="font-size:32px;font-weight:bold" id="total">-</div>
+            <div>Total Requests</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:#16a34a;border-radius:12px;padding:20px;color:white">
+            <div style="font-size:32px;font-weight:bold" id="allowed">-</div>
+            <div>Allowed</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:#dc2626;border-radius:12px;padding:20px;color:white">
+            <div style="font-size:32px;font-weight:bold" id="blocked">-</div>
+            <div>Blocked</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:#9333ea;border-radius:12px;padding:20px;color:white">
+            <div style="font-size:32px;font-weight:bold" id="blockRate">-</div>
+            <div>Block Rate</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Top Blocked IPs</h5>
+        <div id="topIps"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-3">
+            <h5>Recent Logs</h5>
+            <div>
+                <button class="btn btn-sm btn-danger" onclick="clearLogs()">Clear Logs</button>
+                <button class="btn btn-sm btn-secondary" onclick="loadLogs()">Refresh</button>
+            </div>
+        </div>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP</th>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody id="logsTable"></tbody>
+        </table>
+        <div id="pagination" class="mt-3"></div>
+    </div>
+</div>
+
+<script>
+    async function loadStats() {
+        const res = await fetch("/admin/audit/stats");
+        const data = await res.json();
+        document.getElementById("total").textContent = data.total_requests || 0;
+        document.getElementById("allowed").textContent = data.allowed || 0;
+        document.getElementById("blocked").textContent = data.blocked || 0;
+        document.getElementById("blockRate").textContent = data.block_rate || "0%";
+
+        const topIps = (data.top_blocked_ips || [])
+            .map(ip => `<span class="badge bg-danger me-2">${ip.ip} (${ip.count})</span>`)
+            .join("");
+        document.getElementById("topIps").innerHTML = topIps || "No blocked IPs";
+    }
+
+    async function loadLogs() {
+        const res = await fetch("/admin/audit/logs");
+        const data = await res.json();
+        const rows = (data.logs || []).map(log => `
+    <tr>
+      <td>${log.time}</td>
+      <td>${log.ip}</td>
+      <td><span class="badge bg-secondary">${log.method}</span></td>
+      <td>${log.path}</td>
+      <td>${log.allowed
+                ? '<span class="badge bg-success">Allowed</span>'
+                : '<span class="badge bg-danger">Blocked</span>'}</td>
+      <td>${log.reason}</td>
+    </tr>
+  `).join("");
+        document.getElementById("logsTable").innerHTML = rows || "<tr><td colspan='6'>No logs</td></tr>";
+    }
+
+    async function clearLogs() {
+        const csrfRes = await fetch("/csrf-token");
+        const { csrf_token } = await csrfRes.json();
+        await fetch("/admin/audit/clear", {
+            method: "DELETE",
+            headers: { "x-csrf-token": csrf_token },
+            credentials: "include"
+        });
+        loadLogs();
+        loadStats();
+    }
+
+    loadStats();
+    loadLogs();
+
+    // pagination
+    let currentPage = 1;
+    const logsPerPage = 10;
+    let allLogs = [];
+
+    async function loadLogs() {
+        const res = await fetch("/admin/audit/logs");
+        const data = await res.json();
+        allLogs = data.logs || [];
+        renderPage(currentPage);
+        renderPagination();
+    }
+
+    function renderPage(page) {
+        const start = (page - 1) * logsPerPage;
+        const end = start + logsPerPage;
+        const pageLogs = allLogs.slice(start, end);
+
+        const rows = pageLogs.map(log => `
+    <tr>
+      <td>${log.time}</td>
+      <td>${log.ip}</td>
+      <td><span class="badge bg-secondary">${log.method}</span></td>
+      <td>${log.path}</td>
+      <td>${log.allowed
+                ? '<span class="badge bg-success">Allowed</span>'
+                : '<span class="badge bg-danger">Blocked</span>'}</td>
+      <td>${log.reason}</td>
+    </tr>
+  `).join("");
+
+        document.getElementById("logsTable").innerHTML =
+            rows || "<tr><td colspan='6'>No logs</td></tr>";
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(allLogs.length / logsPerPage);
+        let html = '<nav><ul class="pagination pagination-sm">';
+
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+  </li>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+      <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+    </li>`;
+        }
+
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+    <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+  </li>`;
+
+        html += '</ul></nav>';
+        document.getElementById("pagination").innerHTML = html;
+    }
+
+    function changePage(page) {
+        const totalPages = Math.ceil(allLogs.length / logsPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderPage(page);
+        renderPagination();
+    }
+</script>
+{% endblock %}

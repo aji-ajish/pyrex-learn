@@ -1,0 +1,56 @@
+{% extends "admin/layout.html" %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="background:#2563eb">
+      <div style="font-size:32px;font-weight:bold">{{ totalUsers }}</div>
+      <div>Total Users</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:#16a34a">
+      <div style="font-size:32px;font-weight:bold">{{ totalSessions }}</div>
+      <div>Active Sessions</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:#dc2626">
+      <div style="font-size:32px;font-weight:bold">{{ blockedRequests }}</div>
+      <div>Blocked Requests</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:#9333ea">
+      <div style="font-size:32px;font-weight:bold">{{ totalRequests }}</div>
+      <div>Total Requests</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h5>Recent Users</h5>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in recentUsers %}
+        <tr>
+          <td>{{ user.id }}</td>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td><span class="badge bg-primary">{{ user.role }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
