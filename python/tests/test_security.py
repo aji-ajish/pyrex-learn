@@ -126,3 +126,56 @@ class TestCSRF:
         token = generate_token("127.0.0.1")
         verify_token(token, "127.0.0.1")  # First use
         assert verify_token(token, "127.0.0.1") == False
+
+
+class TestPasswordReset:
+    def test_reset_token_format(self):
+        import secrets
+        token = secrets.token_hex(32)
+        assert len(token) == 64
+        assert isinstance(token, str)
+
+    def test_token_uniqueness(self):
+        import secrets
+        token1 = secrets.token_hex(32)
+        token2 = secrets.token_hex(32)
+        assert token1 != token2
+
+
+class TestJWTLogic:
+    def test_jwt_secret_exists(self):
+        import os
+        from dotenv import load_dotenv
+        load_dotenv("../.env")
+        secret = os.getenv("JWT_SECRET")
+        assert secret is not None
+        assert len(secret) > 0
+
+    def test_jwt_secret_not_default(self):
+        import os
+        from dotenv import load_dotenv
+        load_dotenv("../.env")
+        secret = os.getenv("JWT_SECRET")
+        # Production-ல default secret use பண்ணக்கூடாது!
+        assert secret != "secret"
+        assert secret != "password"
+
+
+class TestSecurityCombined:
+    def test_sql_and_xss_together(self):
+        # Both attacks ஒரே string-ல
+        payload = "<script>SELECT * FROM users</script>"
+        assert check_sql_injection(payload) == True
+        assert check_xss(payload) == True
+
+    def test_clean_input(self):
+        payload = "Hello, my name is Ajish!"
+        assert check_sql_injection(payload) == False
+        assert check_xss(payload) == False
+
+    def test_ip_and_security_combined(self):
+        # Blacklisted IP — security check-கே போகக்கூடாது
+        ip_blacklist.add("5.5.5.5")
+        result = check_ip("5.5.5.5", "/api/v1/user")
+        ip_blacklist.discard("5.5.5.5")
+        assert result["allowed"] == False
