@@ -1,6 +1,7 @@
 import router from "./routes.js";
 import { bodyParser, safeParseBody } from "./core/BodyParser.js";
 import config from "./config/framework.config.js";
+import TemplateEngine from "./core/TemplateEngine.js";
 
 async function registerSecurityConfig() {
   try {
@@ -89,6 +90,13 @@ const server = Bun.serve({
     const match = router.match(request.method, path);
     if (match) {
       const res = {
+        render: (templatePath, data = {}) => {
+          const html = TemplateEngine.render(templatePath, data);
+          return new Response(html, {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          });
+        },
         status: (code) => ({
           json: (data) =>
             new Response(JSON.stringify(data), {
