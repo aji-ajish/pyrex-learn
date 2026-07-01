@@ -1,7 +1,53 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import config from "../config/framework.config.js";
 
 const VIEWS_DIR = join(import.meta.dir, "../views");
+
+// Asset tags generate பண்ணு
+const generateAssets = () => {
+  const template = config.template;
+  let styles = "";
+  let scripts = "";
+
+  // Meta tags
+  const meta = template.meta || {};
+  if (meta.description) {
+    styles += `<meta name="description" content="${meta.description}">\n`;
+  }
+
+  // CDN styles
+  for (const url of template.cdn?.styles || []) {
+    styles += `<link rel="stylesheet" href="${url}">\n`;
+  }
+
+  // External styles
+  for (const url of template.external?.styles || []) {
+    styles += `<link rel="stylesheet" href="${url}">\n`;
+  }
+
+  // Inline styles
+  if (template.inline?.styles) {
+    styles += `<style>${template.inline.styles}</style>\n`;
+  }
+
+  // CDN scripts
+  for (const url of template.cdn?.scripts || []) {
+    scripts += `<script src="${url}"></script>\n`;
+  }
+
+  // External scripts
+  for (const url of template.external?.scripts || []) {
+    scripts += `<script src="${url}"></script>\n`;
+  }
+
+  // Inline scripts
+  if (template.inline?.scripts) {
+    scripts += `<script>${template.inline.scripts}</script>\n`;
+  }
+
+  return { styles, scripts };
+};
 
 const TemplateEngine = {
   // File read பண்ணு
@@ -23,7 +69,7 @@ const TemplateEngine = {
         } catch (e) {
           return `<!-- Include error: ${path} -->`;
         }
-      }
+      },
     );
   },
 
@@ -36,7 +82,8 @@ const TemplateEngine = {
     let layout = TemplateEngine.readTemplate(layoutPath);
 
     // Blocks extract பண்ணு
-    const blockRegex = /\{%\s*block\s+(\w+)\s*%\}([\s\S]*?)\{%\s*endblock\s*%\}/g;
+    const blockRegex =
+      /\{%\s*block\s+(\w+)\s*%\}([\s\S]*?)\{%\s*endblock\s*%\}/g;
     const blocks = {};
     let match;
 
@@ -47,7 +94,7 @@ const TemplateEngine = {
     // Layout-ல blocks replace பண்ணு
     layout = layout.replace(
       /\{%\s*block\s+(\w+)\s*%\}[\s\S]*?\{%\s*endblock\s*%\}/g,
-      (match, blockName) => blocks[blockName] || ""
+      (match, blockName) => blocks[blockName] || "",
     );
 
     return layout;
@@ -65,7 +112,7 @@ const TemplateEngine = {
         } catch (e) {
           return "";
         }
-      }
+      },
     );
   },
 
@@ -77,11 +124,13 @@ const TemplateEngine = {
         const items = data[array];
         if (!Array.isArray(items)) return "";
 
-        return items.map(value => {
-          const itemData = { ...data, [item]: value };
-          return TemplateEngine.processVariables(content, itemData);
-        }).join("");
-      }
+        return items
+          .map((value) => {
+            const itemData = { ...data, [item]: value };
+            return TemplateEngine.processVariables(content, itemData);
+          })
+          .join("");
+      },
     );
   },
 
@@ -99,8 +148,7 @@ const TemplateEngine = {
 
   // CSS/JS inject பண்ணு (framework.config.js இருந்து)
   processAssets: (template, data) => {
-    const styles = data.styles || "";
-    const scripts = data.scripts || "";
+    const { styles, scripts } = generateAssets();
     return template
       .replace("{{ styles }}", styles)
       .replace("{{ scripts }}", scripts);
@@ -116,17 +164,17 @@ const TemplateEngine = {
     // 2. Includes process பண்ணு
     template = TemplateEngine.processIncludes(template);
 
-    // 3. For loops process பண்ணு
+    // 3. ✅ Assets முதல்ல inject பண்ணு — variables process பண்ண முன்னே!
+    template = TemplateEngine.processAssets(template, data);
+
+    // 4. For loops process பண்ணு
     template = TemplateEngine.processFor(template, data);
 
-    // 4. If conditions process பண்ணு
+    // 5. If conditions process பண்ணு
     template = TemplateEngine.processIf(template, data);
 
-    // 5. Variables process பண்ணு
+    // 6. Variables process பண்ணு
     template = TemplateEngine.processVariables(template, data);
-
-    // 6. Assets inject பண்ணு
-    template = TemplateEngine.processAssets(template, data);
 
     return template;
   },

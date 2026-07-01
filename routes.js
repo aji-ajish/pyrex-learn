@@ -15,9 +15,9 @@ router.use(security);
 router.use(cors);
 const api = router.group("/api/v1");
 
-api.get("/", PageController.home);
-api.get("/about", [auth], PageController.about);
-api.get("/contact", PageController.contact);
+router.get("/", PageController.home);
+router.get("/about", PageController.about);
+router.get("/contact", PageController.contact);
 api.get("/user/:id", PageController.user);
 api.get("/user/profile/:id", PageController.userProfile);
 api.post("/user", PageController.createUser);

@@ -1,0 +1,15 @@
+body {
+  font-family: sans-serif;
+  padding: 20px;
+}
+nav {
+  background: #2563eb;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+}
+nav a {
+  margin-right: 15px;
+  text-decoration: none;
+  color: white;
+}
+h1 { color: #2563eb; }

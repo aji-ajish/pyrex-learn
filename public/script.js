@@ -1,1 +1,0 @@
-console.log("Pyrex static JS loaded!");

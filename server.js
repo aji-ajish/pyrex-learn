@@ -60,24 +60,23 @@ const server = Bun.serve({
     if (path === "/favicon.ico") {
       return new Response(null, { status: 204 });
     }
-
-    // Static file check
-    const { join } = await import("path");
-    const staticPath = join(
-      import.meta.dir,
-      "public",
-      path === "/" ? "/index.html" : path,
-    );
-    const staticFile = Bun.file(staticPath);
-    if (await staticFile.exists()) {
-      return new Response(staticFile);
+    if (
+      path.startsWith("/css/") ||
+      path.startsWith("/js/") ||
+      path.startsWith("/images/") ||
+      path.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/)
+    ) {
+      const { join } = await import("path");
+      const staticPath = join(import.meta.dir, "public", path);
+      const staticFile = Bun.file(staticPath);
+      if (await staticFile.exists()) {
+        return new Response(staticFile);
+      }
+      return new Response("Not Found", { status: 404 });
     }
-    console.log("Content-Type:", request.headers.get("Content-Type"));
-    // ✅ Body parse பண்ணு
+
+    // ✅ Routes முதல்ல check பண்ணு
     const body = await bodyParser(request);
-    // console.log("Parsed body:", body);
-    // console.log("Body type:", typeof body);
-    // ✅ pyrexRequest wrapper create பண்ணு (request readonly fix)
     const pyrexRequest = {
       raw: request,
       method: request.method,
@@ -122,14 +121,27 @@ const server = Bun.serve({
             headers: { Location: url },
           }),
       };
-
       return router.runMiddlewares(
-        pyrexRequest, // ✅ pyrexRequest use பண்ணு
+        pyrexRequest,
         match.middlewares,
         () => match.handler(match.params, pyrexRequest, res),
         res,
       );
     }
+
+    // ✅ Route match இல்லன்னா மட்டும் static files check பண்ணு
+    const { join } = await import("path");
+    const staticPath = join(
+      import.meta.dir,
+      "public",
+      path === "/" ? "/index.html" : path,
+    );
+    const staticFile = Bun.file(staticPath);
+    if (await staticFile.exists()) {
+      return new Response(staticFile);
+    }
+
+    return new Response("404 - Page Not Found", { status: 404 });
   },
 });
 
