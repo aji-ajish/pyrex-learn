@@ -4,52 +4,58 @@ import config from "./config/framework.config.js";
 import TemplateEngine from "./core/TemplateEngine.js";
 import SSGBuilder from "./core/SSGBuilder.js";
 
-async function registerSecurityConfig() {
-  try {
-    const base = "http://localhost:8000";
-    const headers = { "Content-Type": "application/json" };
+async function registerSecurityConfig(retries = 5, delay = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const base = "http://localhost:8000";
+      const headers = { "Content-Type": "application/json" };
 
-    // ✅ முதல்ல reset பண்ணு — old config clear!
-    await fetch(`${base}/config/reset`, { method: "POST", headers });
+      // Python ready-ஆ check பண்ணு
+      await fetch(`${base}/health`);
 
-    // Brute force routes
-    await fetch(`${base}/config/brute-force-routes`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ routes: config.security.bruteForce.routes }),
-    });
+      // ✅ Ready! Config register பண்ணு
+      await fetch(`${base}/config/reset`, { method: "POST", headers });
 
-    // Blacklist IPs
-    for (const ip of config.security.blacklist) {
-      await fetch(`${base}/config/blacklist/add`, {
+      for (const ip of config.security.blacklist) {
+        await fetch(`${base}/config/blacklist/add`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ ip }),
+        });
+      }
+
+      for (const ip of config.security.whitelist) {
+        await fetch(`${base}/config/whitelist/add`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ ip }),
+        });
+      }
+
+      for (const [route, ips] of Object.entries(
+        config.security.routeWhitelist,
+      )) {
+        await fetch(`${base}/config/route-whitelist`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ route, ips }),
+        });
+      }
+
+      await fetch(`${base}/config/brute-force-routes`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ ip }),
+        body: JSON.stringify({ routes: config.security.bruteForce.routes }),
       });
-    }
 
-    // Whitelist IPs
-    for (const ip of config.security.whitelist) {
-      await fetch(`${base}/config/whitelist/add`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ ip }),
-      });
+      console.log("✅ Security config registered!");
+      return;
+    } catch (e) {
+      console.log(`⏳ Python not ready, retrying (${i + 1}/${retries})...`);
+      await new Promise((r) => setTimeout(r, delay));
     }
-
-    // Route whitelist
-    for (const [route, ips] of Object.entries(config.security.routeWhitelist)) {
-      await fetch(`${base}/config/route-whitelist`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ route, ips }),
-      });
-    }
-
-    console.log("Security config registered!");
-  } catch (e) {
-    console.log("Python server not ready:", e.message);
   }
+  console.log("⚠️  Python server not available — security checks disabled!");
 }
 
 const server = Bun.serve({
